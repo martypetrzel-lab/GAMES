@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Game {
+  id            String         @id @default(uuid()) @db.Uuid
+  slug          String         @unique
+  title         String
+  steamAppId    String?
+  imageUrl      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  providerGames ProviderGame[]
+  offers        Offer[]
+
+  @@index([title])
+  @@index([steamAppId])
+}
+
+model Store {
+  id          String   @id @default(uuid()) @db.Uuid
+  provider    String
+  externalId  String
+  name        String
+  isActive    Boolean  @default(true)
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  offers      Offer[]
+
+  @@unique([provider, externalId])
+  @@index([name])
+}
+
+model ProviderGame {
+  id         String   @id @default(uuid()) @db.Uuid
+  provider   String
+  externalId String
+  gameId     String   @db.Uuid
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  game       Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalId])
+  @@unique([provider, gameId])
+  @@index([gameId])
+}
+
+model Offer {
+  id                String             @id @default(uuid()) @db.Uuid
+  provider          String
+  externalId        String
+  gameId            String             @db.Uuid
+  storeId           String             @db.Uuid
+  priceMinor        Int
+  regularPriceMinor Int
+  currency          String             @db.Char(3)
+  savingsPercent    Int
+  targetUrl         String
+  observedAt        DateTime
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  game              Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  store             Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  observations      PriceObservation[]
+
+  @@unique([provider, externalId])
+  @@index([gameId, priceMinor])
+  @@index([storeId])
+  @@index([observedAt])
+}
+
+model PriceObservation {
+  id                String   @id @default(uuid()) @db.Uuid
+  offerId           String   @db.Uuid
+  priceMinor        Int
+  regularPriceMinor Int
+  currency          String   @db.Char(3)
+  observedAt        DateTime @default(now())
+  offer             Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, priceMinor, regularPriceMinor, currency, observedAt])
+  @@index([offerId, observedAt])
+}
+
+model ProviderRun {
+  id           String    @id @default(uuid()) @db.Uuid
+  provider     String
+  kind         String
+  query        String?
+  status       String
+  itemCount    Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([provider, startedAt])
+  @@index([status, startedAt])
+}
+
+model ExchangeRate {
+  id            String   @id @default(uuid()) @db.Uuid
+  provider      String
+  baseCurrency  String   @db.Char(3)
+  quoteCurrency String   @db.Char(3)
+  rate          Decimal  @db.Decimal(20, 8)
+  sourceAmount  Int      @default(1)
+  validFor      DateTime @db.Date
+  fetchedAt     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([provider, baseCurrency, quoteCurrency, validFor])
+  @@index([baseCurrency, quoteCurrency, validFor(sort: Desc)])
+  @@index([fetchedAt])
+}
