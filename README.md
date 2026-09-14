@@ -61,6 +61,8 @@ Pro vývoj nové migrace po změně schématu použijte `pnpm db:migrate --name 
 
 Soubor `.env.example` obsahuje pouze bezpečné vzory. Skutečné e-maily, hesla a tokeny patří do lokálního `.env` nebo do správy proměnných Railway.
 
+`pnpm install` a `pnpm db:generate` fungují bez `DATABASE_URL`, protože pouze generují Prisma Clienta. Běh aplikace a příkazy `db:migrate`, `db:deploy` a `db:seed` naopak platnou PostgreSQL `DATABASE_URL` povinně kontrolují a bez ní skončí s chybou. Build nepoužívá žádnou náhradní ani falešnou databázi.
+
 ## Ceny a kurz
 
 CheapShark poskytuje ceny v USD. Aplikace je parsuje přes `decimal.js` a ukládá jako celé centy. Převod USD/CZK probíhá přesnou desetinnou aritmetikou se zaokrouhlením half-up na celé haléře.

@@ -4,22 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/with-database-url.mjs next dev",
     "build": "next build && node scripts/prepare-standalone.mjs",
-    "start": "next start",
-    "start:standalone": "node .next/standalone/server.js",
+    "start": "node scripts/with-database-url.mjs next start",
+    "start:standalone": "node scripts/with-database-url.mjs node .next/standalone/server.js",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run && node scripts/check-deployment-config.mjs",
     "test:watch": "vitest",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "db:migrate": "node scripts/with-database-url.mjs prisma migrate dev",
+    "db:deploy": "node scripts/with-database-url.mjs prisma migrate deploy",
+    "db:seed": "node scripts/with-database-url.mjs prisma db seed"
   },
   "engines": {
     "node": ">=24.0.0"

@@ -8,8 +8,21 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gameradar_cz
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gameradar_cz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gameradar_cz?schema=public
       CHEAPSHARK_USER_AGENT: GameRadarCZ/0.1 (+https://github.com/martypetrzel-lab/GAMES)
       CNB_API_BASE_URL: https://api.cnb.cz/cnbapi
       ADS_ENABLED: "false"
@@ -23,6 +36,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gameradar_cz?schema=public
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
