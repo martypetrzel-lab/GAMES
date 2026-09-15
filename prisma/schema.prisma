@@ -17,9 +17,232 @@ model Game {
   updatedAt     DateTime       @updatedAt
   providerGames ProviderGame[]
   offers        Offer[]
+  wishlistItems WishlistItem[]
 
   @@index([title])
   @@index([steamAppId])
+}
+
+model User {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  name                  String
+  email                 String                   @unique
+  emailVerified         Boolean                  @default(false)
+  image                 String?
+  marketingEmails       Boolean                  @default(false)
+  steamId               String?                  @unique
+  steamDisplayName      String?
+  steamAvatarUrl        String?
+  steamLastSyncedAt     DateTime?
+  steamProfileVisibility String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  accounts              Account[]
+  sessions              Session[]
+  wishlistItems         WishlistItem[]
+  notifications         Notification[]
+  consents              UserConsent[]
+  emailOutbox           EmailOutbox[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens   PasswordResetToken[]
+
+  @@index([createdAt])
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String
+  providerId            String
+  userId                String    @db.Uuid
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  id          String @id @default(uuid()) @db.Uuid
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}
+
+model WishlistItem {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @db.Uuid
+  gameId        String       @db.Uuid
+  note          String?      @db.VarChar(500)
+  priceAtAddMinor Int?
+  priceCurrency String?      @db.Char(3)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game          Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  alerts        PriceAlert[]
+
+  @@unique([userId, gameId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([gameId])
+}
+
+model PriceAlert {
+  id                    String         @id @default(uuid()) @db.Uuid
+  wishlistItemId        String         @db.Uuid
+  targetPriceMinor      Int?
+  currency              String         @default("CZK") @db.Char(3)
+  onHistoricalLow       Boolean        @default(false)
+  dropPercent           Int?
+  enabled               Boolean        @default(true)
+  cooldownHours         Int            @default(24)
+  lastTriggeredAt       DateTime?
+  lastCheckedAt         DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  wishlistItem          WishlistItem   @relation(fields: [wishlistItemId], references: [id], onDelete: Cascade)
+  notifications         Notification[]
+
+  @@unique([wishlistItemId, targetPriceMinor, currency, onHistoricalLow])
+  @@index([enabled, lastCheckedAt])
+}
+
+model Notification {
+  id              String      @id @default(uuid()) @db.Uuid
+  userId          String      @db.Uuid
+  priceAlertId    String?     @db.Uuid
+  deduplicationKey String     @unique
+  type            String
+  title           String
+  message         String
+  gameId          String?     @db.Uuid
+  priceMinor      Int?
+  currency        String?     @db.Char(3)
+  targetPriceMinor Int?
+  exchangeRateDate DateTime?  @db.Date
+  usdPriceMinor   Int?
+  status          String      @default("pending")
+  attempts        Int         @default(0)
+  lastAttemptAt   DateTime?
+  sentAt          DateTime?
+  readAt          DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceAlert      PriceAlert? @relation(fields: [priceAlertId], references: [id], onDelete: SetNull)
+  emailOutbox      EmailOutbox?
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([status, lastAttemptAt])
+}
+
+model AlertCheckRun {
+  id          String    @id @default(uuid()) @db.Uuid
+  lockKey     String?
+  status      String
+  selected    Int       @default(0)
+  checked     Int       @default(0)
+  triggered   Int       @default(0)
+  failed      Int       @default(0)
+  errorMessage String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status, startedAt(sort: Desc)])
+}
+
+model EmailOutbox {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String?   @db.Uuid
+  notificationId  String?   @unique @db.Uuid
+  template        String
+  recipient       String
+  payload         Json
+  status          String    @default("pending")
+  attempts        Int       @default(0)
+  nextAttemptAt   DateTime  @default(now())
+  lastAttemptAt   DateTime?
+  providerMessageId String?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification    Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+}
+
+model UserConsent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  kind      String
+  version   String
+  granted   Boolean
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt(sort: Desc)])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Store {

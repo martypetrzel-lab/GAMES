@@ -8,6 +8,14 @@ const serverEnvSchema = z.object({
   CHEAPSHARK_CONTACT_EMAIL: z.union([z.literal(""), z.string().email()]).optional(),
   CNB_API_BASE_URL: z.string().url().default("https://api.cnb.cz/cnbapi"),
   ADS_ENABLED: z.enum(["true", "false"]).default("false"),
+  AUTH_SECRET: z.string().min(32).optional(),
+  APP_BASE_URL: z.string().url().optional(),
+  EMAIL_PROVIDER: z.enum(["disabled", "log", "resend"]).default("disabled"),
+  EMAIL_FROM: z.string().optional(),
+  EMAIL_API_KEY: z.string().optional(),
+  CRON_BATCH_SIZE: z.coerce.number().int().min(1).max(50).default(10),
+  ALERT_COOLDOWN_HOURS: z.coerce.number().int().min(1).max(720).default(24),
+  STEAM_API_KEY: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -22,6 +30,14 @@ export function getServerEnv(): ServerEnv {
       CHEAPSHARK_CONTACT_EMAIL: process.env.CHEAPSHARK_CONTACT_EMAIL,
       CNB_API_BASE_URL: process.env.CNB_API_BASE_URL,
       ADS_ENABLED: process.env.ADS_ENABLED,
+      AUTH_SECRET: process.env.AUTH_SECRET,
+      APP_BASE_URL: process.env.APP_BASE_URL,
+      EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      EMAIL_API_KEY: process.env.EMAIL_API_KEY,
+      CRON_BATCH_SIZE: process.env.CRON_BATCH_SIZE,
+      ALERT_COOLDOWN_HOURS: process.env.ALERT_COOLDOWN_HOURS,
+      STEAM_API_KEY: process.env.STEAM_API_KEY,
     });
   }
 

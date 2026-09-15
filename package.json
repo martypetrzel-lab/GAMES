@@ -20,20 +20,24 @@
     "db:migrate": "node scripts/with-database-url.mjs prisma migrate dev",
     "db:deploy": "node scripts/with-database-url.mjs prisma migrate deploy",
     "db:seed": "node scripts/with-database-url.mjs prisma db seed",
-    "prices:refresh": "node scripts/with-database-url.mjs node --conditions=react-server --import tsx scripts/refresh-stale-games.ts"
+    "prices:refresh": "node scripts/with-database-url.mjs node --conditions=react-server --import tsx scripts/refresh-stale-games.ts",
+    "alerts:check": "node scripts/with-database-url.mjs node --conditions=react-server --import tsx scripts/check-alerts.ts"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "dependencies": {
+    "@better-auth/prisma-adapter": "^1.7.4",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "better-auth": "^1.7.4",
     "decimal.js": "^10.6.0",
     "next": "16.3.5",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
+    "resend": "^6.28.0",
     "server-only": "^0.0.1",
     "zod": "^4.6.4"
   },
