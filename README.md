@@ -128,6 +128,25 @@ Repozitář obsahuje `railway.json` s Railpack buildem, health endpointem a pre-
 
 Projekt v této fázi na Railway nasazen není.
 
-## Omezení Fáze 2
+## Fáze 3: účty a cenová upozornění
 
-Projekt neobsahuje uživatelské účty, administraci, e-mailová upozornění, prémiové funkce, ostré reklamy ani hromadný import katalogu. CheapShark neposkytuje spolehlivý údaj o aktivační platformě všech nabídek; aplikace proto potvrzuje pouze přímý nákup v obchodě Steam a u ostatních uvádí „Aktivace neuvedena“. Historie se začne smysluplně vykreslovat až po skutečných změnách cen.
+Autentizaci zajišťuje Better Auth s Prisma adaptérem. Hesla jsou hashována pomocí scrypt a sessions jsou uloženy v PostgreSQL. Osobní stránky ověřují session na serveru a všechny změny filtrují podle přihlášeného uživatele.
+
+| Nová Railway Variable  | Povinná        | Tajná | Chování při absenci                                                              |
+| ---------------------- | -------------- | ----- | -------------------------------------------------------------------------------- |
+| `AUTH_SECRET`          | ano v produkci | ano   | autentizace nesmí být používána; vytvořte `openssl rand -base64 48`              |
+| `APP_BASE_URL`         | ano v produkci | ne    | lokálně `http://localhost:3000`, na Railway veřejná HTTPS URL                    |
+| `EMAIL_PROVIDER`       | ne             | ne    | `disabled` nic neposílá, `log` vypíše bezpečné preview, `resend` aktivuje Resend |
+| `EMAIL_FROM`           | jen pro Resend | ne    | bez něj se provider bezpečně vypne                                               |
+| `EMAIL_API_KEY`        | jen pro Resend | ano   | klíč patří pouze do Railway Variables                                            |
+| `CRON_BATCH_SIZE`      | ne             | ne    | výchozí 10, povoleno 1–50                                                        |
+| `ALERT_COOLDOWN_HOURS` | ne             | ne    | výchozí 24 hodin                                                                 |
+| `STEAM_API_KEY`        | ne             | ano   | Steam synchronizace není aktivní                                                 |
+
+E-mail je ve výchozím stavu vypnutý. Produkční Resend vyžaduje ověřenou doménu, odesílatele a API klíč. Aplikace bez úplné konfigurace nikdy nepředstírá úspěšné odeslání.
+
+### Samostatná Railway cron služba
+
+Cron bez schválení nezapínejte. Po schválení vytvořte z téhož repozitáře samostatnou Railway službu se stejnou databází a proměnnými. Start Command nastavte na `pnpm alerts:check`, odstraňte veřejnou doménu a zvolte plán například každé dvě hodiny. Proces používá PostgreSQL advisory lock, omezenou dávku, seskupení her a sekvenční požadavky; po dokončení skončí.
+
+Steam identita je pouze datově připravená. Aplikace nepoužívá scraping ani soukromé endpointy. Export a smazání osobních dat jsou v nastavení účtu. Text zásad soukromí je provozní návrh, nikoliv právní stanovisko.

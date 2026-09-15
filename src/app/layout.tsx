@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
+import { AccountNav } from "@/components/auth/account-nav";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin", "latin-ext"] });
@@ -37,7 +38,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <nav className="desktop-nav" aria-label="Hlavní navigace">
               <Link href="/">Domů</Link>
               <Link href="/hledat">Hledat hry</Link>
+              <Link href="/hry-zdarma">Hry zdarma</Link>
             </nav>
+            <AccountNav />
             <span className="header-trust">Ceny přepočítané kurzem ČNB</span>
             <details className="mobile-nav">
               <summary aria-label="Otevřít navigaci">
@@ -48,6 +51,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <nav aria-label="Mobilní navigace">
                 <Link href="/">Domů</Link>
                 <Link href="/hledat">Hledat hry</Link>
+                <Link href="/hry-zdarma">Hry zdarma</Link>
+                <Link href="/ochrana-soukromi">Ochrana soukromí</Link>
               </nav>
             </details>
           </div>
