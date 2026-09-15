@@ -10,7 +10,8 @@ type Area =
   | "external-validation"
   | "persistence"
   | "search"
-  | "cron";
+  | "cron"
+  | "catalog";
 type SafeContext = Readonly<{
   operation?: string;
   provider?: string;

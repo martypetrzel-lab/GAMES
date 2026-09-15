@@ -16,6 +16,19 @@ const serverEnvSchema = z.object({
   CRON_BATCH_SIZE: z.coerce.number().int().min(1).max(50).default(10),
   ALERT_COOLDOWN_HOURS: z.coerce.number().int().min(1).max(720).default(24),
   STEAM_API_KEY: z.string().optional(),
+  CATALOG_SYNC_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  CATALOG_SYNC_BATCH_SIZE: z.coerce.number().int().min(1).max(200).default(60),
+  CATALOG_MAX_PAGES_PER_RUN: z.coerce.number().int().min(1).max(20).default(5),
+  CATALOG_REQUEST_DELAY_MS: z.coerce.number().int().min(500).max(30000).default(2000),
+  CATALOG_MAX_RUNTIME_MINUTES: z.coerce.number().int().min(1).max(30).default(10),
+  PRICE_REFRESH_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
+  VERIFIED_STORES_ONLY: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -38,6 +51,13 @@ export function getServerEnv(): ServerEnv {
       CRON_BATCH_SIZE: process.env.CRON_BATCH_SIZE,
       ALERT_COOLDOWN_HOURS: process.env.ALERT_COOLDOWN_HOURS,
       STEAM_API_KEY: process.env.STEAM_API_KEY,
+      CATALOG_SYNC_ENABLED: process.env.CATALOG_SYNC_ENABLED,
+      CATALOG_SYNC_BATCH_SIZE: process.env.CATALOG_SYNC_BATCH_SIZE,
+      CATALOG_MAX_PAGES_PER_RUN: process.env.CATALOG_MAX_PAGES_PER_RUN,
+      CATALOG_REQUEST_DELAY_MS: process.env.CATALOG_REQUEST_DELAY_MS,
+      CATALOG_MAX_RUNTIME_MINUTES: process.env.CATALOG_MAX_RUNTIME_MINUTES,
+      PRICE_REFRESH_BATCH_SIZE: process.env.PRICE_REFRESH_BATCH_SIZE,
+      VERIFIED_STORES_ONLY: process.env.VERIFIED_STORES_ONLY,
     });
   }
 
