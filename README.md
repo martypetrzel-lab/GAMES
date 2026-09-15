@@ -1,6 +1,6 @@
 # GameRadar CZ
 
-Český srovnávač cen digitálních PC her. Fáze 1 načítá nabídky serverově z CheapSharku, ukládá aktuální ceny a jejich změny do PostgreSQL a zobrazuje orientační přepočet do CZK podle kurzovního lístku České národní banky.
+Český srovnávač cen digitálních PC her. Fáze 2 přidává profesionální responzivní rozhraní, filtrování, vlastní cenové statistiky a interaktivní graf nad bezpečně uloženými daty z CheapSharku. Ceny v CZK jsou orientačně přepočítané podle kurzovního lístku České národní banky.
 
 ## Použité technologie
 
@@ -10,6 +10,7 @@
 - Vitest, ESLint a Prettier
 - CheapShark jako první implementace `PriceProvider`
 - API ČNB jako první implementace `ExchangeRateProvider`
+- Recharts načítaný pouze na detailu hry
 
 ## Požadavky
 
@@ -46,6 +47,8 @@
    ```
 
 Web bude dostupný na `http://localhost:3000`. Kontrola běhu služby je na `http://localhost:3000/api/health`. Produkční sestavení vytvoříte přes `pnpm build` a lokálně spustíte přes `pnpm start`. Railway na Linuxu používá samostatný server přes `pnpm start:standalone`.
+
+Health endpoint kontroluje i skutečné připojení k databázi. Vrací pouze bezpečný stav `ok`/`degraded` a čas kontroly, nikdy připojovací údaje.
 
 Pro vývoj nové migrace po změně schématu použijte `pnpm db:migrate --name popis-zmeny`. Pro aplikování již vytvořených migrací používejte `pnpm db:deploy`; produkční databázi nepřipojujte k příkazu `migrate dev`.
 
@@ -85,6 +88,22 @@ Odkaz „Přejít do obchodu“ vede nejprve na `/go/[offerId]`. Endpoint přij�
 - `ProviderRun` – provozní výsledek uživatelského hledání
 - `ExchangeRate` – denní kurz a čas jeho stažení
 
+## Vlastní historie a graf
+
+Detail hry počítá minimum, maximum, průměr a medián výhradně z tabulky `PriceObservation`. Externí historické minimum CheapSharku zůstává oddělené a výslovně označené. Hodnocení výhodnosti vyžaduje alespoň pět pozorování v období minimálně 14 dní; do té doby se zobrazuje „Zatím nedostatek dat“.
+
+Interní endpoint `/api/history/[gameId]?range=3m` přijímá jen číselné CheapShark ID a rozsahy `30d`, `3m`, `6m`, `1y` nebo `all`. Databázový dotaz je omezen na 5 000 záznamů a odpověď je agregována nejvýše přibližně na 500 bodů.
+
+## Šetrná aktualizace cen
+
+Samostatný ukončitelný příkaz aktualizuje pouze omezenou dávku již uložených her, jejichž nabídky jsou starší než 12 hodin:
+
+```bash
+pnpm prices:refresh
+```
+
+Výchozí dávka je 10 her, maximum 25. Velikost lze snížit proměnnou `PRICE_REFRESH_BATCH_SIZE`. Mezi hrami je prodleva a zůstávají zachované cache a timeouty poskytovatele. Příkaz není součástí webového procesu a ve Fázi 2 se cron na Railway automaticky nezapíná.
+
 ## Kontroly
 
 ```bash
@@ -109,6 +128,6 @@ Repozitář obsahuje `railway.json` s Railpack buildem, health endpointem a pre-
 
 Projekt v této fázi na Railway nasazen není.
 
-## Omezení Fáze 1
+## Omezení Fáze 2
 
-Projekt neobsahuje uživatelské účty, administraci, e-mailová upozornění, prémiové funkce, ostré reklamy ani plánovaný hromadný sběr katalogu. Historické minimum poskytnuté CheapSharkem je v UI výslovně označeno jako externí údaj, nikoli jako vlastní historie GameRadar CZ.
+Projekt neobsahuje uživatelské účty, administraci, e-mailová upozornění, prémiové funkce, ostré reklamy ani hromadný import katalogu. CheapShark neposkytuje spolehlivý údaj o aktivační platformě všech nabídek; aplikace proto potvrzuje pouze přímý nákup v obchodě Steam a u ostatních uvádí „Aktivace neuvedena“. Historie se začne smysluplně vykreslovat až po skutečných změnách cen.

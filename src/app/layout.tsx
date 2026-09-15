@@ -9,8 +9,17 @@ const geist = Geist({ variable: "--font-geist", subsets: ["latin", "latin-ext"] 
 const geistMono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
   title: { default: siteConfig.name, template: `%s | ${siteConfig.name}` },
   description: siteConfig.description,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: siteConfig.name,
+    description: siteConfig.description,
+    type: "website",
+    locale: "cs_CZ",
+    url: "/",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -29,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/">Domů</Link>
               <Link href="/hledat">Hledat hry</Link>
             </nav>
+            <span className="header-trust">Ceny přepočítané kurzem ČNB</span>
             <details className="mobile-nav">
               <summary aria-label="Otevřít navigaci">
                 <span />
@@ -53,6 +63,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 </span>
               </div>
               <p>Český přehled cen digitálních PC her.</p>
+              <nav className="footer-links" aria-label="Odkazy v patičce">
+                <Link href="/">Domů</Link>
+                <Link href="/hledat">Hledat hry</Link>
+                <a href={siteConfig.repositoryUrl}>Zdrojový kód</a>
+              </nav>
             </div>
             <p className="disclaimer">
               Ceny jsou orientační a mohou se v obchodě změnit. Vždy zkontrolujte konečnou cenu před
