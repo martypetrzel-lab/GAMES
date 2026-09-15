@@ -66,7 +66,7 @@ export async function getUsdCzkRate(): Promise<ExchangeRateQuote | null> {
   }
 }
 
-export const getStoredUsdCzkRate = unstable_cache(
+const getCachedStoredUsdCzkRate = unstable_cache(
   async (): Promise<ExchangeRateQuote | null> => {
     const latest = await getPrisma().exchangeRate.findFirst({
       where: { provider: "cnb", baseCurrency: "USD", quoteCurrency: "CZK" },
@@ -77,3 +77,10 @@ export const getStoredUsdCzkRate = unstable_cache(
   ["stored-usd-czk-rate"],
   { revalidate: 3600, tags: ["exchange-rate"] },
 );
+
+export async function getStoredUsdCzkRate(): Promise<ExchangeRateQuote | null> {
+  const rate = await getCachedStoredUsdCzkRate();
+  return rate
+    ? { ...rate, validFor: new Date(rate.validFor), fetchedAt: new Date(rate.fetchedAt) }
+    : null;
+}

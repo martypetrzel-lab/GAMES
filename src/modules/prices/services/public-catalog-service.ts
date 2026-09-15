@@ -99,10 +99,18 @@ async function queryStoredGames(query: string): Promise<SearchResult[]> {
   });
 }
 
-export const searchStoredGames = unstable_cache(queryStoredGames, ["catalog-search-v1"], {
+const getCachedStoredGames = unstable_cache(queryStoredGames, ["catalog-search-v1"], {
   revalidate: 300,
   tags: [PUBLIC_CACHE_TAGS.catalog, PUBLIC_CACHE_TAGS.offers],
 });
+
+export async function searchStoredGames(query: string): Promise<SearchResult[]> {
+  const games = await getCachedStoredGames(query);
+  return games.map((game) => ({
+    ...game,
+    offers: game.offers.map((offer) => ({ ...offer, observedAt: new Date(offer.observedAt) })),
+  }));
+}
 
 async function queryStoredGameBySlug(slug: string) {
   return measureServerOperation("database", "game-detail", () =>
@@ -140,10 +148,21 @@ async function queryStoredGameBySlug(slug: string) {
   );
 }
 
-export const getStoredGameBySlug = unstable_cache(queryStoredGameBySlug, ["game-detail-v1"], {
+const getCachedStoredGameBySlug = unstable_cache(queryStoredGameBySlug, ["game-detail-v1"], {
   revalidate: 300,
   tags: [PUBLIC_CACHE_TAGS.catalog, PUBLIC_CACHE_TAGS.offers],
 });
+
+export async function getStoredGameBySlug(slug: string) {
+  const game = await getCachedStoredGameBySlug(slug);
+  return game
+    ? {
+        ...game,
+        updatedAt: new Date(game.updatedAt),
+        offers: game.offers.map((offer) => ({ ...offer, observedAt: new Date(offer.observedAt) })),
+      }
+    : null;
+}
 
 export async function getCanonicalSlugForProvider(provider: string, externalId: string) {
   const row = await getPrisma().providerGame.findUnique({
