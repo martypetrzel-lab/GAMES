@@ -7,6 +7,15 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ProductType {
+  GAME
+  DLC
+  DEMO
+  SOUNDTRACK
+  SOFTWARE
+  UNKNOWN
+}
+
 model Game {
   id            String         @id @default(uuid()) @db.Uuid
   slug          String         @unique
@@ -21,12 +30,27 @@ model Game {
   catalogActive Boolean        @default(true)
   priceChangeNumber BigInt?
   popularityScore Int          @default(0)
+  productType   ProductType    @default(UNKNOWN)
+  productTypeOverride ProductType?
+  productTypeSource String?
   providerGames ProviderGame[]
   offers        Offer[]
   wishlistItems WishlistItem[]
+  slugAliases   GameSlugAlias[]
 
   @@index([title])
   @@index([steamAppId])
+  @@index([catalogActive, productType, updatedAt(sort: Desc)])
+}
+
+model GameSlugAlias {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  gameId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
 }
 
 model User {
@@ -314,6 +338,7 @@ model Offer {
 
   @@unique([provider, externalId])
   @@index([gameId, priceMinor])
+  @@index([gameId, observedAt(sort: Desc)])
   @@index([storeId])
   @@index([observedAt])
 }

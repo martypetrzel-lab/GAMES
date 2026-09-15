@@ -5,19 +5,10 @@ import {
   SteamCatalogError,
   SteamCatalogProvider,
 } from "../src/modules/catalog/steam/steam-catalog-provider";
+import { stableGameSlug } from "../src/modules/catalog/slug";
 const db = getPrisma();
 const env = getServerEnv();
 const started = Date.now();
-const slug = (name: string, id: number) =>
-  `${
-    name
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 70) || "steam-game"
-  }-steam-${id}`;
 async function main() {
   if (!env.CATALOG_SYNC_ENABLED) {
     console.info(JSON.stringify({ level: "info", event: "catalog-sync-disabled" }));
@@ -75,11 +66,19 @@ async function main() {
                     catalogActive: true,
                     priceChangeNumber:
                       app.priceChangeNumber === null ? null : BigInt(app.priceChangeNumber),
+                    ...(existing.productTypeOverride
+                      ? {}
+                      : { productType: "GAME" as const, productTypeSource: "steam-api-type" }),
                   },
                 })
               : await tx.game.create({
                   data: {
-                    slug: slug(app.name, app.appId),
+                    slug: (await tx.game.findUnique({
+                      where: { slug: stableGameSlug(app.name) },
+                      select: { id: true },
+                    }))
+                      ? stableGameSlug(app.name, `steam:${app.appId}`)
+                      : stableGameSlug(app.name),
                     title: app.name,
                     steamAppId: String(app.appId),
                     appType: app.appType,
@@ -87,6 +86,8 @@ async function main() {
                     catalogSyncedAt: new Date(),
                     priceChangeNumber:
                       app.priceChangeNumber === null ? null : BigInt(app.priceChangeNumber),
+                    productType: "GAME",
+                    productTypeSource: "steam-api-type",
                   },
                 });
             await tx.providerGame.upsert({
@@ -121,6 +122,17 @@ async function main() {
         where: { id: run.id },
         data: { status: "success", cursorEnd: cursor, fetched, imported, completedAt: new Date() },
       });
+      console.info(
+        JSON.stringify({
+          level: "info",
+          event: "catalog-sync-complete",
+          fetched,
+          imported,
+          pages,
+          durationMs: Date.now() - started,
+          timestamp: new Date().toISOString(),
+        }),
+      );
     } catch (error) {
       await db.catalogSyncRun.update({
         where: { id: run.id },

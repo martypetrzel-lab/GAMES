@@ -19,6 +19,8 @@ type SafeContext = Readonly<{
   status?: number;
   gameId?: string;
   itemCount?: number;
+  durationMs?: number;
+  cacheState?: "fresh" | "stale" | "miss";
 }>;
 
 export function logServerError(area: Area, error: unknown, context: SafeContext = {}) {
@@ -39,4 +41,29 @@ export function logServerError(area: Area, error: unknown, context: SafeContext 
       timestamp: new Date().toISOString(),
     }),
   );
+}
+
+export async function measureServerOperation<T>(
+  area: Area,
+  operation: string,
+  task: () => Promise<T>,
+): Promise<T> {
+  const started = performance.now();
+  try {
+    return await task();
+  } finally {
+    const durationMs = Math.round(performance.now() - started);
+    if (durationMs >= 250) {
+      console.info(
+        JSON.stringify({
+          level: "info",
+          event: "server-operation-slow",
+          area,
+          operation,
+          durationMs,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    }
+  }
 }

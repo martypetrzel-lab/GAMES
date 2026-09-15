@@ -29,6 +29,10 @@ const serverEnvSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
+  DATABASE_CONNECT_TIMEOUT_MS: z.coerce.number().int().min(500).max(30000).default(5000),
+  DATABASE_IDLE_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(30000),
+  READINESS_TIMEOUT_MS: z.coerce.number().int().min(250).max(10000).default(2000),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -58,6 +62,10 @@ export function getServerEnv(): ServerEnv {
       CATALOG_MAX_RUNTIME_MINUTES: process.env.CATALOG_MAX_RUNTIME_MINUTES,
       PRICE_REFRESH_BATCH_SIZE: process.env.PRICE_REFRESH_BATCH_SIZE,
       VERIFIED_STORES_ONLY: process.env.VERIFIED_STORES_ONLY,
+      DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,
+      DATABASE_CONNECT_TIMEOUT_MS: process.env.DATABASE_CONNECT_TIMEOUT_MS,
+      DATABASE_IDLE_TIMEOUT_MS: process.env.DATABASE_IDLE_TIMEOUT_MS,
+      READINESS_TIMEOUT_MS: process.env.READINESS_TIMEOUT_MS,
     });
   }
 
