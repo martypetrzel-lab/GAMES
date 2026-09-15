@@ -3,13 +3,15 @@ import { NextResponse } from "next/server";
 import { legacyRedirectDecision } from "@/modules/catalog/legacy-routing";
 import { getGameDetail } from "@/modules/prices/services/price-service";
 import { getCanonicalSlugForProvider } from "@/modules/prices/services/public-catalog-service";
+import { siteConfig } from "@/config/site";
 
 const externalIdPattern = /^\d{1,12}$/;
 
 export async function GET(request: Request, context: RouteContext<"/hra/cheapshark/[gameId]">) {
+  void request;
   const { gameId } = await context.params;
   if (!externalIdPattern.test(gameId)) {
-    return NextResponse.redirect(new URL("/hledat", request.url), 307);
+    return NextResponse.redirect(new URL("/hledat", siteConfig.url), 307);
   }
 
   let slug = await getCanonicalSlugForProvider("cheapshark", gameId);
@@ -23,5 +25,5 @@ export async function GET(request: Request, context: RouteContext<"/hra/cheapsha
   }
 
   const decision = legacyRedirectDecision(slug, gameId);
-  return NextResponse.redirect(new URL(decision.path, request.url), decision.status);
+  return NextResponse.redirect(new URL(decision.path, siteConfig.url), decision.status);
 }
