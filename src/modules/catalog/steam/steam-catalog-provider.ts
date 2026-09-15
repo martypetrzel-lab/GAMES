@@ -55,10 +55,13 @@ export class SteamCatalogProvider {
       max_results: Math.min(1000, Math.max(1, maxResults)),
     };
     const url = new URL("https://api.steampowered.com/IStoreService/GetAppList/v1/");
-    url.searchParams.set("key", this.apiKey);
     url.searchParams.set("input_json", JSON.stringify(input));
     const response = await this.fetcher(url, {
-      headers: { Accept: "application/json", "User-Agent": "GameRadarCZ-Catalog/1.0" },
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "GameRadarCZ-Catalog/1.0",
+        "x-webapi-key": this.apiKey,
+      },
       signal,
     });
     if (response.status === 429) {
