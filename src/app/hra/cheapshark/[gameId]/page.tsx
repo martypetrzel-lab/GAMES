@@ -145,6 +145,14 @@ export default async function GameDetailPage({ params }: PageProps<"/hra/cheapsh
         </div>
       </article>
       <RateNote rate={rate} />
+      <aside className="trusted-store-note">
+        <strong>Co znamená ověřený obchod?</strong>
+        <p>
+          Nabídky zobrazujeme jen z přímých platforem nebo ručně schválených autorizovaných
+          prodejců. Obchod a aktivační platforma jsou dvě různé informace; neznámou aktivaci
+          neodhadujeme.
+        </p>
+      </aside>
       <section className="stats-grid" aria-label="Statistiky vlastní cenové historie">
         <Stat label="Aktuální nejlepší cena" value={formatOwn(best.price.minor)} />
         <Stat label="Vlastní historické minimum" value={formatOwn(summary?.minimum)} />

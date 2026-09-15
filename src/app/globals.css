@@ -15,6 +15,29 @@
   --danger: #ff6b72;
 }
 
+.verified-badge {
+  display: inline-flex !important;
+  width: max-content;
+  margin-top: 0.35rem;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid #2f806f;
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.trusted-store-note {
+  margin: 1rem 0;
+  padding: 1rem 1.2rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: 0.4rem;
+}
+.trusted-store-note p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+}
+
 /* Účty a osobní centrum */
 .header-login,
 .wishlist-button {

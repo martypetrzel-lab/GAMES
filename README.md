@@ -150,3 +150,35 @@ E-mail je ve výchozím stavu vypnutý. Produkční Resend vyžaduje ověřenou 
 Cron bez schválení nezapínejte. Po schválení vytvořte z téhož repozitáře samostatnou Railway službu se stejnou databází a proměnnými. Start Command nastavte na `pnpm alerts:check`, odstraňte veřejnou doménu a zvolte plán například každé dvě hodiny. Proces používá PostgreSQL advisory lock, omezenou dávku, seskupení her a sekvenční požadavky; po dokončení skončí.
 
 Steam identita je pouze datově připravená. Aplikace nepoužívá scraping ani soukromé endpointy. Export a smazání osobních dat jsou v nastavení účtu. Text zásad soukromí je provozní návrh, nikoliv právní stanovisko.
+
+## Steam-first katalog a důvěryhodné obchody
+
+Katalog používá výhradně oficiální Steam Web API `IStoreService/GetAppList/v1` přes HTTPS a `input_json`. Požadavek explicitně zapíná hry a vypíná DLC, software, videa a hardware. Steam klíč zůstává pouze na serveru. Katalog nečte ceny ze Steam Store, nepoužívá scraping a nevolá zastaralé `ISteamApps/GetAppList/v2`.
+
+Import je ve výchozím stavu zablokovaný hodnotou `CATALOG_SYNC_ENABLED=false`. Příkaz `pnpm catalog:sync` používá cursor `last_appid`, idempotentní upsert, omezenou dávku, časový limit a PostgreSQL advisory lock. Při HTTP 429 se okamžitě ukončí a zaznamená `Retry-After`. `pnpm catalog:refresh-prices` aktualizuje pouze katalogové hry, které mají existující vazbu na povolený CheapShark zdroj; prioritu mají sledované hry, aktivní alerty, popularita a slevy.
+
+Veřejný allowlist je navázán na stabilní CheapShark `storeID`, nikoli na název. Ověřené mapování: Steam `1`, Green Man Gaming `3`, GOG `7`, Humble Store `11`, Fanatical `15`, Epic Games Store `25` a Gamesplanet `27`. Microsoft Store v aktuálním seznamu CheapShark není a nabídka se proto nevytváří. Všechny ostatní obchody jsou `pending` nebo `blocked` a ve veřejném UI i přesměrování `/go` jsou skryté.
+
+Autorizovaný obchod automaticky neznamená Steam klíč. Aktivace je uvedena jen tehdy, když ji lze doložit: Steam, GOG a Epic jsou přímé nákupy na vlastní platformě; u současných nabídek autorizovaných prodejců zůstává aktivace `unknown`, protože ji CheapShark spolehlivě neposkytuje.
+
+### Proměnné katalogu
+
+| Proměnná                      | Výchozí hodnota |                   Bezpečný rozsah |
+| ----------------------------- | --------------: | --------------------------------: |
+| `CATALOG_SYNC_ENABLED`        |         `false` | `true` pouze po výslovném zapnutí |
+| `CATALOG_SYNC_BATCH_SIZE`     |            `60` |                             1–200 |
+| `CATALOG_MAX_PAGES_PER_RUN`   |             `5` |                              1–20 |
+| `CATALOG_REQUEST_DELAY_MS`    |          `2000` |                      500–30000 ms |
+| `CATALOG_MAX_RUNTIME_MINUTES` |            `10` |                          1–30 min |
+| `PRICE_REFRESH_BATCH_SIZE`    |            `25` |                             1–100 |
+| `VERIFIED_STORES_ONLY`        |          `true` |           veřejně ponechat `true` |
+
+### Tři samostatné Railway cron služby
+
+Každou službu vytvořte ze stejného repozitáře, připojte stejnou PostgreSQL a proměnné a odstraňte veřejnou doménu. Nepoužívejte start webového serveru.
+
+1. **Catalog Sync** – Start Command `pnpm catalog:sync`, doporučený cron `15 2 * * *` UTC. Nejdříve ponechte `CATALOG_SYNC_ENABLED=false`, ověřte konfiguraci a teprve výslovně ji přepněte na `true`.
+2. **Price Refresh** – Start Command `pnpm catalog:refresh-prices`, doporučený cron `15 */4 * * *` UTC.
+3. **Alert Check** – Start Command `pnpm alerts:check`, doporučený cron `45 */2 * * *` UTC.
+
+Railway plánuje v UTC. Praha je v zimě UTC+1 a v létě UTC+2, takže například 02:15 UTC odpovídá 03:15 CET nebo 04:15 CEST. Všechny tři procesy mají databázový zámek, omezenou práci a po skončení uzavřou připojení.

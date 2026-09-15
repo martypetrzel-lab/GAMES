@@ -1,5 +1,6 @@
 import { convertUsdCentsToCzkHalere, formatMoney } from "@/lib/money/money";
 import type { ExchangeRateQuote, SearchResult } from "@/modules/prices/domain/types";
+import { classifyPurchase, getStorePolicy } from "@/modules/stores/trusted-stores";
 
 type Deal = SearchResult["offers"][number];
 
@@ -13,13 +14,24 @@ function formatDate(date: Date) {
 
 export function DealCard({ deal, rate }: { deal: Deal; rate: ExchangeRateQuote | null }) {
   const czkMinor = rate ? convertUsdCentsToCzkHalere(deal.price.minor, rate.rate) : null;
-  const directSteam = deal.externalStoreId === "1";
+  const policy = getStorePolicy(deal.provider, deal.externalStoreId);
+  const purchase = classifyPurchase(deal.provider, deal.externalStoreId);
   return (
     <article className="deal-card">
       <div className="store-name">
         <span className="store-dot" />
         {deal.storeName}
-        <small>{directSteam ? "Přímý nákup na Steamu" : "Aktivace neuvedena"}</small>
+        <small>
+          {policy.sellerType === "first_party_store"
+            ? "Přímá platforma"
+            : "Autorizovaný prodejce klíčů"}{" "}
+          ·{" "}
+          {purchase.activationPlatform === "unknown"
+            ? "Aktivace neuvedena"
+            : `Aktivace ${purchase.activationPlatform === "steam" ? "Steam" : purchase.activationPlatform === "epic" ? "Epic Games Store" : "GOG"}`}{" "}
+          · {purchase.purchaseType === "direct" ? "Přímý nákup" : "Aktivační klíč"}
+        </small>
+        <span className="verified-badge">✓ Ověřený prodejce</span>
       </div>
       <div className="deal-prices">
         <strong>

@@ -40,10 +40,18 @@ export default async function SearchPage({ searchParams }: PageProps<"/hledat">)
     minDiscount: number(one(params.discount)),
     minPrice: number(one(params.minPrice), 100),
     maxPrice: number(one(params.maxPrice), 100),
-    activation:
-      one(params.activation) === "steam" || one(params.activation) === "unknown"
-        ? (one(params.activation) as "steam" | "unknown")
-        : undefined,
+    activation: [
+      "steam",
+      "steam-key",
+      "direct",
+      "epic",
+      "gog",
+      "authorized",
+      "verified",
+      "unknown",
+    ].includes(one(params.activation) ?? "")
+      ? (one(params.activation) as SearchFilters["activation"])
+      : undefined,
   };
   const page = Math.max(1, number(one(params.page)) ?? 1);
   let rawResults: SearchResult[] = [];
@@ -185,7 +193,13 @@ export default async function SearchPage({ searchParams }: PageProps<"/hledat">)
                 Aktivace
                 <select name="activation" defaultValue={filters.activation ?? ""}>
                   <option value="">Všechny</option>
-                  <option value="steam">Přímý nákup na Steamu</option>
+                  <option value="steam">Pouze Steam</option>
+                  <option value="direct">Přímý nákup</option>
+                  <option value="steam-key">Steam klíč (zatím bez ověřených dat)</option>
+                  <option value="epic">Epic Games Store</option>
+                  <option value="gog">GOG</option>
+                  <option value="authorized">Autorizovaní prodejci</option>
+                  <option value="verified">Ověřené obchody</option>
                   <option value="unknown">Aktivace neuvedena</option>
                 </select>
               </label>
