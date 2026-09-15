@@ -1,7 +1,7 @@
 import { ZodError, type ZodType } from "zod";
 
 import { parseUsdToCents } from "@/lib/money/money";
-import { createCheapSharkRedirectUrl } from "@/lib/urls/safe-url";
+import { approvedProviderImageUrl, createCheapSharkRedirectUrl } from "@/lib/urls/safe-url";
 import type {
   ProviderGameDetail,
   ProviderOffer,
@@ -81,7 +81,7 @@ export class CheapSharkProvider implements PriceProvider {
         externalGameId,
         title: game.info.title,
         steamAppId: game.info.steamAppID,
-        imageUrl: game.info.thumb,
+        imageUrl: approvedProviderImageUrl(game.info.thumb),
         offers: game.deals.map((deal) =>
           this.mapOffer({
             dealId: deal.dealID,
@@ -89,7 +89,7 @@ export class CheapSharkProvider implements PriceProvider {
             storeId: deal.storeID,
             title: game.info.title,
             steamAppId: game.info.steamAppID,
-            imageUrl: game.info.thumb,
+            imageUrl: approvedProviderImageUrl(game.info.thumb),
             price: deal.price,
             regularPrice: deal.retailPrice,
             savings: deal.savings,
@@ -154,7 +154,7 @@ export class CheapSharkProvider implements PriceProvider {
       externalStoreId: input.storeId,
       title: input.title,
       steamAppId: input.steamAppId,
-      imageUrl: input.imageUrl,
+      imageUrl: approvedProviderImageUrl(input.imageUrl),
       price: { minor: parseUsdToCents(input.price), currency: "USD" },
       regularPrice: { minor: parseUsdToCents(input.regularPrice), currency: "USD" },
       savingsPercent: Math.max(0, Math.min(100, Math.round(Number(input.savings)))),

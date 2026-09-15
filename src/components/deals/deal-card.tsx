@@ -13,11 +13,13 @@ function formatDate(date: Date) {
 
 export function DealCard({ deal, rate }: { deal: Deal; rate: ExchangeRateQuote | null }) {
   const czkMinor = rate ? convertUsdCentsToCzkHalere(deal.price.minor, rate.rate) : null;
+  const directSteam = deal.externalStoreId === "1";
   return (
     <article className="deal-card">
       <div className="store-name">
         <span className="store-dot" />
         {deal.storeName}
+        <small>{directSteam ? "Přímý nákup na Steamu" : "Aktivace neuvedena"}</small>
       </div>
       <div className="deal-prices">
         <strong>

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createCheapSharkRedirectUrl, isApprovedOfferTarget } from "./safe-url";
+import {
+  approvedProviderImageUrl,
+  createCheapSharkRedirectUrl,
+  isApprovedOfferTarget,
+} from "./safe-url";
 
 describe("safe offer URLs", () => {
   it("vytvoří povolený CheapShark redirect", () => {
@@ -22,5 +26,12 @@ describe("safe offer URLs", () => {
     expect(isApprovedOfferTarget("https://www.cheapshark.com/redirect?dealID=abc", "other")).toBe(
       false,
     );
+  });
+
+  it("povolí obrázky jen z výslovně známých CDN", () => {
+    expect(approvedProviderImageUrl("https://shared.fastly.steamstatic.com/a.jpg")).toContain(
+      "steamstatic",
+    );
+    expect(approvedProviderImageUrl("https://evil.example/a.jpg")).toBeNull();
   });
 });
