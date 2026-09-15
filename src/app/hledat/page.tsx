@@ -10,9 +10,10 @@ import {
   type SearchFilters,
   type SearchSort,
 } from "@/modules/prices/domain/search-controls";
-import { getUsdCzkRate } from "@/modules/prices/services/exchange-rate-service";
+import { getStoredUsdCzkRate } from "@/modules/prices/services/exchange-rate-service";
+import { searchStoredGames } from "@/modules/prices/services/public-catalog-service";
 import { searchGames } from "@/modules/prices/services/price-service";
-import { ProviderError } from "@/modules/prices/providers/provider-error";
+import { preferStoredData } from "@/modules/prices/services/public-cache-policy";
 import type { ExchangeRateQuote, SearchResult } from "@/modules/prices/domain/types";
 
 export const metadata: Metadata = { title: "Hledat hry", robots: { index: false, follow: true } };
@@ -52,23 +53,26 @@ export default async function SearchPage({ searchParams }: PageProps<"/hledat">)
     ].includes(one(params.activation) ?? "")
       ? (one(params.activation) as SearchFilters["activation"])
       : undefined,
+    productType: ["GAME", "DLC", "DEMO", "SOUNDTRACK", "SOFTWARE", "UNKNOWN"].includes(
+      one(params.type) ?? "",
+    )
+      ? (one(params.type) as SearchFilters["productType"])
+      : "GAME",
   };
   const page = Math.max(1, number(one(params.page)) ?? 1);
   let rawResults: SearchResult[] = [];
   let rate: ExchangeRateQuote | null = null;
-  let failure: "provider" | "rate-limit" | "database" | null = null;
+  let failure: "provider" | "database" | null = null;
   if (isValid) {
     try {
-      [rawResults, rate] = await Promise.all([searchGames(query), getUsdCzkRate()]);
+      [rawResults, rate] = await Promise.all([
+        searchStoredGames(query).then((stored) =>
+          preferStoredData(stored, () => searchGames(query)),
+        ),
+        getStoredUsdCzkRate(),
+      ]);
     } catch (error) {
-      failure =
-        error instanceof ProviderError
-          ? error.code === "rate-limited"
-            ? "rate-limit"
-            : "provider"
-          : typeof (error as { code?: unknown })?.code === "string"
-            ? "database"
-            : "provider";
+      failure = typeof (error as { code?: unknown })?.code === "string" ? "database" : "provider";
     }
   }
   const results = filterAndSortGames(rawResults, filters);
@@ -117,17 +121,11 @@ export default async function SearchPage({ searchParams }: PageProps<"/hledat">)
       {failure && (
         <div className="inline-error" role="alert">
           <strong>
-            {failure === "rate-limit"
-              ? "Příliš mnoho požadavků"
-              : failure === "database"
-                ? "Databáze je dočasně nedostupná"
-                : "Cenový zdroj je dočasně nedostupný"}
+            {failure === "database"
+              ? "Databáze je dočasně nedostupná"
+              : "Cenový zdroj je dočasně nedostupný"}
           </strong>
-          <p>
-            {failure === "rate-limit"
-              ? "Počkejte prosím chvíli a zkuste hledání znovu."
-              : "Zkuste to prosím za okamžik znovu."}
-          </p>
+          <p>Zkuste to prosím za okamžik znovu.</p>
         </div>
       )}
       {isValid && !failure && (
@@ -189,6 +187,17 @@ export default async function SearchPage({ searchParams }: PageProps<"/hledat">)
                   />
                 </div>
               </fieldset>
+              <label>
+                Typ produktu
+                <select name="type" defaultValue={filters.productType ?? "GAME"}>
+                  <option value="GAME">Plné hry</option>
+                  <option value="DLC">DLC a rozšíření</option>
+                  <option value="DEMO">Dema</option>
+                  <option value="SOUNDTRACK">Soundtracky</option>
+                  <option value="SOFTWARE">Software</option>
+                  <option value="UNKNOWN">Nezařazené</option>
+                </select>
+              </label>
               <label>
                 Aktivace
                 <select name="activation" defaultValue={filters.activation ?? ""}>

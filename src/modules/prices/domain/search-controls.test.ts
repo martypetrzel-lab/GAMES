@@ -26,6 +26,8 @@ describe("search controls", () => {
       title: "Beta",
       steamAppId: null,
       imageUrl: null,
+      slug: "beta",
+      productType: "GAME",
       offers: [offer("2", 1000, 50)],
     },
     {
@@ -33,6 +35,8 @@ describe("search controls", () => {
       title: "Alfa",
       steamAppId: "1",
       imageUrl: null,
+      slug: "alfa",
+      productType: "GAME",
       offers: [offer("1", 500, 20)],
     },
   ];

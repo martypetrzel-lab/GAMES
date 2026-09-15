@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/db/prisma";
 import type { ExchangeRateQuote } from "@/modules/prices/domain/types";
 import { getCnbProvider } from "@/modules/prices/providers/provider-registry";
 import { logServerError } from "@/lib/observability/server-log";
+import { unstable_cache } from "next/cache";
 
 const MAX_RATE_AGE_MS = 24 * 60 * 60 * 1_000;
 
@@ -64,3 +65,15 @@ export async function getUsdCzkRate(): Promise<ExchangeRateQuote | null> {
     return latest ? fromDatabase(latest) : null;
   }
 }
+
+export const getStoredUsdCzkRate = unstable_cache(
+  async (): Promise<ExchangeRateQuote | null> => {
+    const latest = await getPrisma().exchangeRate.findFirst({
+      where: { provider: "cnb", baseCurrency: "USD", quoteCurrency: "CZK" },
+      orderBy: [{ validFor: "desc" }, { fetchedAt: "desc" }],
+    });
+    return latest ? fromDatabase(latest) : null;
+  },
+  ["stored-usd-czk-rate"],
+  { revalidate: 3600, tags: ["exchange-rate"] },
+);

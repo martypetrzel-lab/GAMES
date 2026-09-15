@@ -42,3 +42,29 @@ export async function getGamePriceSummary(externalGameId: string) {
   const history = await getGameHistory(externalGameId, "all");
   return summarizePrices(history ?? []);
 }
+
+export async function getGamePriceOverview(externalGameId: string) {
+  const db = getPrisma();
+  const providerGame = await db.providerGame.findUnique({
+    where: { provider_externalId: { provider: "cheapshark", externalId: externalGameId } },
+    select: { gameId: true },
+  });
+  if (!providerGame) return null;
+  const result = await db.priceObservation.aggregate({
+    where: { offer: { gameId: providerGame.gameId }, currency: "USD" },
+    _min: { priceMinor: true, observedAt: true },
+    _max: { priceMinor: true, observedAt: true },
+    _avg: { priceMinor: true },
+    _count: { _all: true },
+  });
+  if (!result._count._all || result._min.priceMinor === null || result._max.priceMinor === null)
+    return null;
+  return {
+    minimum: result._min.priceMinor,
+    maximum: result._max.priceMinor,
+    average: Math.round(Number(result._avg.priceMinor)),
+    count: result._count._all,
+    firstObservedAt: result._min.observedAt,
+    lastObservedAt: result._max.observedAt,
+  };
+}

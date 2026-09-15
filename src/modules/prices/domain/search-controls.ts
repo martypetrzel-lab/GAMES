@@ -1,4 +1,5 @@
 import type { SearchResult } from "@/modules/prices/domain/types";
+import type { ProductType } from "@/generated/prisma/enums";
 
 export type SearchSort = "price" | "discount" | "name" | "updated";
 export type SearchFilters = Readonly<{
@@ -9,10 +10,12 @@ export type SearchFilters = Readonly<{
   maxPrice?: number;
   activation?:
     "steam" | "steam-key" | "direct" | "epic" | "gog" | "authorized" | "verified" | "unknown";
+  productType?: ProductType;
 }>;
 
 export function filterAndSortGames(games: SearchResult[], filters: SearchFilters): SearchResult[] {
   const filtered = games
+    .filter((game) => !filters.productType || game.productType === filters.productType)
     .map((game) => ({
       ...game,
       offers: game.offers.filter((offer) => {

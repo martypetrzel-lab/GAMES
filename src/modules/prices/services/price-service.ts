@@ -9,11 +9,14 @@ import { ProviderError } from "@/modules/prices/providers/provider-error";
 import { persistOffers } from "@/modules/prices/services/offer-persistence";
 import { logServerError } from "@/lib/observability/server-log";
 import { isPublicStore } from "@/modules/stores/trusted-stores";
+import { stableGameSlug } from "@/modules/catalog/slug";
+import { classifyProduct } from "@/modules/catalog/product-classification";
 
 const searchQuerySchema = z.string().trim().min(2).max(80);
 const externalIdSchema = z.string().regex(/^\d{1,12}$/);
+const inFlightSearches = new Map<string, Promise<SearchResult[]>>();
 
-export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
+async function performSearchGames(rawQuery: string): Promise<SearchResult[]> {
   const query = searchQuerySchema.parse(rawQuery);
   const provider = getCheapSharkProvider();
   const db = getPrisma();
@@ -30,6 +33,14 @@ export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
       isPublicStore(offer.provider, offer.externalStoreId),
     );
     const persistedIds = await persistOffers(publicOffers, stores);
+    const providerGames = await db.providerGame.findMany({
+      where: {
+        provider: provider.id,
+        externalId: { in: [...new Set(publicOffers.map((offer) => offer.externalGameId))] },
+      },
+      select: { externalId: true, game: { select: { slug: true } } },
+    });
+    const slugs = new Map(providerGames.map((item) => [item.externalId, item.game.slug]));
     const storeNames = new Map(stores.map((store) => [store.externalId, store.name]));
     const grouped = new Map<string, SearchResult>();
 
@@ -39,6 +50,10 @@ export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
         title: offer.title,
         steamAppId: offer.steamAppId,
         imageUrl: offer.imageUrl,
+        slug:
+          slugs.get(offer.externalGameId) ??
+          stableGameSlug(offer.title, `${offer.provider}:${offer.externalGameId}`),
+        productType: classifyProduct(offer.title),
         offers: [],
       };
       current.offers.push({
@@ -89,6 +104,15 @@ export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
       );
     throw error;
   }
+}
+
+export function searchGames(rawQuery: string): Promise<SearchResult[]> {
+  const key = rawQuery.trim().toLocaleLowerCase("cs-CZ");
+  const current = inFlightSearches.get(key);
+  if (current) return current;
+  const request = performSearchGames(rawQuery).finally(() => inFlightSearches.delete(key));
+  inFlightSearches.set(key, request);
+  return request;
 }
 
 export async function getGameDetail(rawExternalId: string): Promise<{

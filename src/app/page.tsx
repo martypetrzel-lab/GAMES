@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { connection } from "next/server";
+import type { Metadata } from "next";
 
 import { AdSlot } from "@/components/ads/ad-slot";
 import { SearchForm } from "@/components/games/search-form";
 import { formatMoney } from "@/lib/money/money";
 import { getHomeHighlights } from "@/modules/prices/services/home-service";
 import { WishlistButton } from "@/components/accounts/wishlist-button";
+
+export const dynamic = "force-dynamic";
 
 const benefits = [
   {
@@ -26,8 +28,21 @@ const benefits = [
   },
 ];
 
+export const metadata: Metadata = {
+  title: "Srovnávač cen PC her v Česku",
+  description:
+    "Porovnejte ceny PC her v ověřených obchodech, sledujte slevy a vlastní cenovou historii v korunách.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "GameRadar CZ – srovnávač cen PC her",
+    description: "Ověřené nabídky PC her, slevy a cenová historie přehledně pro české hráče.",
+    url: "/",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
+};
+
 export default async function Home() {
-  await connection();
   const highlights = await getHomeHighlights().catch(() => ({
     interesting: [],
     discounts: [],
@@ -129,7 +144,7 @@ function OfferSection({
           const externalId = offer.game.providerGames[0]?.externalId ?? "";
           return (
             <article className="offer-tile" key={offer.id}>
-              <Link href={`/hra/cheapshark/${externalId}`}>
+              <Link href={`/hra/${offer.game.slug}`}>
                 <div className="offer-image">
                   {offer.game.imageUrl ? (
                     <Image src={offer.game.imageUrl} alt="" fill sizes="280px" />

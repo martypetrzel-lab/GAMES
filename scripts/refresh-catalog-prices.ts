@@ -85,6 +85,17 @@ async function main() {
         completedAt: new Date(),
       },
     });
+    console.info(
+      JSON.stringify({
+        level: "info",
+        event: "catalog-price-refresh-complete",
+        selected: ranked.length,
+        completed: checked,
+        failed,
+        durationMs: Date.now() - run.startedAt.getTime(),
+        timestamp: new Date().toISOString(),
+      }),
+    );
   } catch (e) {
     await db.catalogSyncRun.update({
       where: { id: run.id },

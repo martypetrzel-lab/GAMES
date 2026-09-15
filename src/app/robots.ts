@@ -1,10 +1,7 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/config/site";
+import { buildRobots } from "@/modules/catalog/seo";
 
 export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/hledat", "/go/"] },
-    sitemap: `${siteConfig.url}/sitemap.xml`,
-    host: siteConfig.url,
-  };
+  return buildRobots(siteConfig.url);
 }

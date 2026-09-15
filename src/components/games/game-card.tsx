@@ -4,10 +4,12 @@ import Image from "next/image";
 import { convertUsdCentsToCzkHalere, formatMoney } from "@/lib/money/money";
 import type { ExchangeRateQuote, SearchResult } from "@/modules/prices/domain/types";
 import { WishlistButton } from "@/components/accounts/wishlist-button";
+import { isPriceStale, relativeUpdateLabel } from "@/modules/prices/domain/freshness";
 
 export function GameCard({ game, rate }: { game: SearchResult; rate: ExchangeRateQuote | null }) {
   const best = game.offers[0];
   const czk = rate ? convertUsdCentsToCzkHalere(best.price.minor, rate.rate) : null;
+  const stale = isPriceStale(best.observedAt);
   return (
     <article className="game-card">
       <div className="game-title-row">
@@ -19,9 +21,12 @@ export function GameCard({ game, rate }: { game: SearchResult; rate: ExchangeRat
           </div>
         )}
         <div>
-          <p>{game.steamAppId ? "PC hra · Steam ID potvrzeno" : "PC hra"}</p>
+          <p>
+            {game.productType === "GAME" ? "Plná PC hra" : game.productType}{" "}
+            {game.steamAppId ? "· Steam ID potvrzeno" : ""}
+          </p>
           <h2>
-            <Link href={`/hra/cheapshark/${game.externalGameId}`}>{game.title}</Link>
+            <Link href={`/hra/${game.slug}`}>{game.title}</Link>
           </h2>
         </div>
         <div className="game-best">
@@ -32,6 +37,10 @@ export function GameCard({ game, rate }: { game: SearchResult; rate: ExchangeRat
           <small>
             {formatMoney(best.price)} · {best.storeName}
           </small>
+          <small className={stale ? "stale-price" : undefined}>
+            Aktualizováno {relativeUpdateLabel(best.observedAt)}
+            {stale ? " · starší cena" : ""}
+          </small>
         </div>
       </div>
       <div className="game-card-footer">
@@ -39,10 +48,7 @@ export function GameCard({ game, rate }: { game: SearchResult; rate: ExchangeRat
           {game.offers.length} {game.offers.length === 1 ? "nabídka" : "nabídek"} · sleva až{" "}
           {Math.max(...game.offers.map((offer) => offer.savingsPercent))} %
         </span>
-        <Link
-          className="detail-link button-secondary"
-          href={`/hra/cheapshark/${game.externalGameId}`}
-        >
+        <Link className="detail-link button-secondary" href={`/hra/${game.slug}`}>
           Otevřít detail →
         </Link>
         <WishlistButton

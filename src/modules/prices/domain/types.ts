@@ -1,4 +1,5 @@
 import type { Money } from "@/lib/money/money";
+import type { ProductType } from "@/generated/prisma/enums";
 
 export type ProviderStore = Readonly<{
   externalId: string;
@@ -38,6 +39,8 @@ export type SearchResult = Readonly<{
   title: string;
   steamAppId: string | null;
   imageUrl: string | null;
+  slug: string;
+  productType: ProductType;
   offers: Array<ProviderOffer & { storeName: string; persistedId: string | null }>;
 }>;
 

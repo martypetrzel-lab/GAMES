@@ -1,27 +1,40 @@
 import Image from "next/image";
 import Link from "next/link";
-import { connection } from "next/server";
 import { getPrisma } from "@/lib/db/prisma";
+import { unstable_cache } from "next/cache";
+
+export const dynamic = "force-dynamic";
+
+const getFreeOffers = unstable_cache(
+  () =>
+    getPrisma().offer.findMany({
+      where: {
+        priceMinor: 0,
+        store: { isActive: true, trustStatus: "verified" },
+        game: {
+          catalogActive: true,
+          providerGames: { some: { provider: "cheapshark" } },
+          OR: [{ productTypeOverride: "GAME" }, { productTypeOverride: null, productType: "GAME" }],
+        },
+      },
+      orderBy: { observedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        store: { select: { name: true } },
+        game: { select: { slug: true, title: true, imageUrl: true } },
+      },
+    }),
+  ["free-games-v2"],
+  { revalidate: 600, tags: ["free-games", "public-offers"] },
+);
 
 export const metadata = {
   title: "Hry zdarma",
   description: "Potvrzené aktuální nabídky PC her s nulovou cenou.",
 };
 export default async function FreeGamesPage() {
-  await connection();
-  const offers = await getPrisma().offer.findMany({
-    where: {
-      priceMinor: 0,
-      store: { isActive: true },
-      game: { providerGames: { some: { provider: "cheapshark" } } },
-    },
-    orderBy: { observedAt: "desc" },
-    take: 50,
-    include: {
-      store: true,
-      game: { include: { providerGames: { where: { provider: "cheapshark" }, take: 1 } } },
-    },
-  });
+  const offers = await getFreeOffers();
   return (
     <section className="account-dashboard shell">
       <p className="eyebrow">Ověřené nulové ceny</p>
@@ -44,9 +57,7 @@ export default async function FreeGamesPage() {
               <h2>{o.game.title}</h2>
               <p>{o.store.name} · zdroj CheapShark</p>
               <strong>0 Kč / 0 USD</strong>
-              <Link href={`/hra/cheapshark/${o.game.providerGames[0]?.externalId}`}>
-                Zobrazit detail
-              </Link>
+              <Link href={`/hra/${o.game.slug}`}>Zobrazit detail</Link>
             </article>
           ))}
         </div>

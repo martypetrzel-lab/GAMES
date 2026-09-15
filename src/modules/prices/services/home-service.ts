@@ -1,8 +1,10 @@
 import "server-only";
 
 import { getPrisma } from "@/lib/db/prisma";
+import { unstable_cache } from "next/cache";
+import { PUBLIC_CACHE_TAGS } from "@/modules/prices/services/public-cache-policy";
 
-export async function getHomeHighlights() {
+async function queryHomeHighlights() {
   const db = getPrisma();
   const [offers, recentRuns] = await Promise.all([
     db.offer.findMany({
@@ -12,13 +14,28 @@ export async function getHomeHighlights() {
           { store: { trustStatus: "verified" } },
           { store: { OR: [{ isFirstParty: true }, { isAuthorized: true }] } },
         ],
-        game: { providerGames: { some: { provider: "cheapshark" } } },
+        game: {
+          catalogActive: true,
+          providerGames: { some: { provider: "cheapshark" } },
+          OR: [{ productTypeOverride: "GAME" }, { productTypeOverride: null, productType: "GAME" }],
+        },
       },
       orderBy: [{ savingsPercent: "desc" }, { priceMinor: "asc" }],
       take: 18,
       include: {
-        game: { include: { providerGames: { where: { provider: "cheapshark" }, take: 1 } } },
-        store: true,
+        game: {
+          select: {
+            slug: true,
+            title: true,
+            imageUrl: true,
+            providerGames: {
+              where: { provider: "cheapshark" },
+              take: 1,
+              select: { externalId: true },
+            },
+          },
+        },
+        store: { select: { name: true } },
       },
     }),
     db.providerRun.findMany({
@@ -34,3 +51,8 @@ export async function getHomeHighlights() {
   const discounts = offers.filter((offer) => offer.savingsPercent > 0).slice(0, 4);
   return { interesting, discounts, recentQueries: recentRuns.flatMap((run) => run.query ?? []) };
 }
+
+export const getHomeHighlights = unstable_cache(queryHomeHighlights, ["home-highlights-v2"], {
+  revalidate: 300,
+  tags: [PUBLIC_CACHE_TAGS.home, PUBLIC_CACHE_TAGS.offers],
+});

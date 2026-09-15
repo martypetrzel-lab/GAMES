@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { DealCard } from "@/components/deals/deal-card";
 import { RateNote } from "@/components/deals/rate-note";
@@ -13,6 +13,8 @@ import { priceRatingLabels, ratePrice } from "@/modules/prices/domain/price-anal
 import { getUsdCzkRate } from "@/modules/prices/services/exchange-rate-service";
 import { getGamePriceSummary } from "@/modules/prices/services/history-service";
 import { getGameDetail } from "@/modules/prices/services/price-service";
+import { canonicalGamePath, legacyCheapSharkRedirect } from "@/modules/catalog/legacy-routing";
+import { getCanonicalSlugForProvider } from "@/modules/prices/services/public-catalog-service";
 
 const PriceHistoryChart = dynamic(() =>
   import("@/components/charts/price-history-chart").then((module) => module.PriceHistoryChart),
@@ -24,21 +26,31 @@ export async function generateMetadata({
   const { gameId } = await params;
   const record = await getPrisma().providerGame.findUnique({
     where: { provider_externalId: { provider: "cheapshark", externalId: gameId } },
-    select: { game: { select: { title: true } } },
+    select: { game: { select: { title: true, slug: true, imageUrl: true } } },
   });
   const title = record?.game.title ?? `PC hra ${gameId}`;
   const description = `Aktuální nabídky, cenová historie a porovnání cen hry ${title} v českých korunách.`;
-  const path = `/hra/cheapshark/${gameId}`;
+  const path = record ? canonicalGamePath(record.game.slug) : `/hra/cheapshark/${gameId}`;
   return {
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { title, description, type: "website", url: path },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: path,
+      images: record?.game.imageUrl ? [record.game.imageUrl] : undefined,
+    },
   };
 }
 
 export default async function GameDetailPage({ params }: PageProps<"/hra/cheapshark/[gameId]">) {
   const { gameId } = await params;
+  const redirectPath = legacyCheapSharkRedirect(
+    await getCanonicalSlugForProvider("cheapshark", gameId),
+  );
+  if (redirectPath) permanentRedirect(redirectPath);
   const detail = await getGameDetail(gameId);
   if (!detail || detail.offers.length === 0) notFound();
   const [rate, summary] = await Promise.all([getUsdCzkRate(), getGamePriceSummary(gameId)]);

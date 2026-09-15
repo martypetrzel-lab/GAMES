@@ -826,6 +826,16 @@ button {
   color: var(--muted);
   font-size: 11px;
 }
+
+.stale-price {
+  color: #f5b94c !important;
+}
+
+.deal-meta small {
+  display: block;
+  margin-top: 0.3rem;
+  max-width: 24rem;
+}
 .deal-link {
   display: flex;
   justify-content: center;
