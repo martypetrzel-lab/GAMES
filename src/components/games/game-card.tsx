@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { convertUsdCentsToCzkHalere, formatMoney } from "@/lib/money/money";
 import type { ExchangeRateQuote, SearchResult } from "@/modules/prices/domain/types";
+import { WishlistButton } from "@/components/accounts/wishlist-button";
 
 export function GameCard({ game, rate }: { game: SearchResult; rate: ExchangeRateQuote | null }) {
   const best = game.offers[0];
@@ -44,6 +45,10 @@ export function GameCard({ game, rate }: { game: SearchResult; rate: ExchangeRat
         >
           Otevřít detail →
         </Link>
+        <WishlistButton
+          externalGameId={game.externalGameId}
+          returnTo={`/hledat?q=${encodeURIComponent(game.title)}`}
+        />
       </div>
     </article>
   );

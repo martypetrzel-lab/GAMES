@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { DealCard } from "@/components/deals/deal-card";
 import { RateNote } from "@/components/deals/rate-note";
 import { SearchForm } from "@/components/games/search-form";
+import { WishlistButton } from "@/components/accounts/wishlist-button";
 import { getPrisma } from "@/lib/db/prisma";
 import { convertUsdCentsToCzkHalere, formatMoney } from "@/lib/money/money";
 import { priceRatingLabels, ratePrice } from "@/modules/prices/domain/price-analytics";
@@ -140,6 +141,7 @@ export default async function GameDetailPage({ params }: PageProps<"/hra/cheapsh
               Přejít do obchodu ↗
             </a>
           )}
+          <WishlistButton externalGameId={gameId} returnTo={`/hra/cheapshark/${gameId}`} />
         </div>
       </article>
       <RateNote rate={rate} />

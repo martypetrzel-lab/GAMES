@@ -6,6 +6,7 @@ import { AdSlot } from "@/components/ads/ad-slot";
 import { SearchForm } from "@/components/games/search-form";
 import { formatMoney } from "@/lib/money/money";
 import { getHomeHighlights } from "@/modules/prices/services/home-service";
+import { WishlistButton } from "@/components/accounts/wishlist-button";
 
 const benefits = [
   {
@@ -124,27 +125,29 @@ function OfferSection({
         <h2>{title}</h2>
       </div>
       <div className="offer-grid">
-        {offers.map((offer) => (
-          <Link
-            className="offer-tile"
-            key={offer.id}
-            href={`/hra/cheapshark/${offer.game.providerGames[0]?.externalId ?? ""}`}
-          >
-            <div className="offer-image">
-              {offer.game.imageUrl ? (
-                <Image src={offer.game.imageUrl} alt="" fill sizes="280px" />
-              ) : (
-                <span>{offer.game.title.slice(0, 1)}</span>
-              )}
-            </div>
-            <div>
-              <h3>{offer.game.title}</h3>
-              <p>{offer.store.name}</p>
-              <strong>{formatMoney({ minor: offer.priceMinor, currency: "USD" })}</strong>
-              {offer.savingsPercent > 0 && <b>−{offer.savingsPercent} %</b>}
-            </div>
-          </Link>
-        ))}
+        {offers.map((offer) => {
+          const externalId = offer.game.providerGames[0]?.externalId ?? "";
+          return (
+            <article className="offer-tile" key={offer.id}>
+              <Link href={`/hra/cheapshark/${externalId}`}>
+                <div className="offer-image">
+                  {offer.game.imageUrl ? (
+                    <Image src={offer.game.imageUrl} alt="" fill sizes="280px" />
+                  ) : (
+                    <span>{offer.game.title.slice(0, 1)}</span>
+                  )}
+                </div>
+                <div>
+                  <h3>{offer.game.title}</h3>
+                  <p>{offer.store.name}</p>
+                  <strong>{formatMoney({ minor: offer.priceMinor, currency: "USD" })}</strong>
+                  {offer.savingsPercent > 0 && <b>−{offer.savingsPercent} %</b>}
+                </div>
+              </Link>
+              <WishlistButton externalGameId={externalId} returnTo="/" />
+            </article>
+          );
+        })}
       </div>
     </section>
   );
