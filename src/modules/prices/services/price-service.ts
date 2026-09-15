@@ -5,7 +5,9 @@ import { z } from "zod";
 import { getPrisma } from "@/lib/db/prisma";
 import type { ProviderGameDetail, SearchResult } from "@/modules/prices/domain/types";
 import { getCheapSharkProvider } from "@/modules/prices/providers/provider-registry";
+import { ProviderError } from "@/modules/prices/providers/provider-error";
 import { persistOffers } from "@/modules/prices/services/offer-persistence";
+import { logServerError } from "@/lib/observability/server-log";
 
 const searchQuerySchema = z.string().trim().min(2).max(80);
 const externalIdSchema = z.string().regex(/^\d{1,12}$/);
@@ -53,14 +55,34 @@ export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
     });
     return results;
   } catch (error) {
-    await db.providerRun.update({
-      where: { id: run.id },
-      data: {
-        status: "failed",
-        errorMessage: error instanceof Error ? error.message.slice(0, 500) : "Neznámá chyba",
-        completedAt: new Date(),
-      },
+    const area =
+      error instanceof ProviderError
+        ? error.provider === "cheapshark"
+          ? error.code === "invalid-response"
+            ? "external-validation"
+            : "cheapshark"
+          : "search"
+        : typeof (error as { code?: unknown })?.code === "string" &&
+            String((error as { code: string }).code).startsWith("P")
+          ? "database"
+          : "persistence";
+    logServerError(area, error, {
+      operation: "search-games",
+      provider: provider.id,
+      code: error instanceof ProviderError ? error.code : undefined,
     });
+    await db.providerRun
+      .update({
+        where: { id: run.id },
+        data: {
+          status: "failed",
+          errorMessage: error instanceof Error ? error.message.slice(0, 500) : "Neznámá chyba",
+          completedAt: new Date(),
+        },
+      })
+      .catch((updateError) =>
+        logServerError("persistence", updateError, { operation: "provider-run-failure" }),
+      );
     throw error;
   }
 }

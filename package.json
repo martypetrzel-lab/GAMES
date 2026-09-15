@@ -19,7 +19,8 @@
     "db:validate": "prisma validate",
     "db:migrate": "node scripts/with-database-url.mjs prisma migrate dev",
     "db:deploy": "node scripts/with-database-url.mjs prisma migrate deploy",
-    "db:seed": "node scripts/with-database-url.mjs prisma db seed"
+    "db:seed": "node scripts/with-database-url.mjs prisma db seed",
+    "prices:refresh": "node scripts/with-database-url.mjs node --conditions=react-server --import tsx scripts/refresh-stale-games.ts"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -32,6 +33,7 @@
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "recharts": "^3.10.1",
     "server-only": "^0.0.1",
     "zod": "^4.6.4"
   },

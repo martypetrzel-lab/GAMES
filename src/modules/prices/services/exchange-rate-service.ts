@@ -3,6 +3,7 @@ import "server-only";
 import { getPrisma } from "@/lib/db/prisma";
 import type { ExchangeRateQuote } from "@/modules/prices/domain/types";
 import { getCnbProvider } from "@/modules/prices/providers/provider-registry";
+import { logServerError } from "@/lib/observability/server-log";
 
 const MAX_RATE_AGE_MS = 24 * 60 * 60 * 1_000;
 
@@ -58,7 +59,8 @@ export async function getUsdCzkRate(): Promise<ExchangeRateQuote | null> {
       update: { rate: fresh.rate, sourceAmount: fresh.sourceAmount, fetchedAt: fresh.fetchedAt },
     });
     return fromDatabase(saved);
-  } catch {
+  } catch (error) {
+    logServerError("cnb", error, { operation: "usd-czk-rate", provider: "cnb" });
     return latest ? fromDatabase(latest) : null;
   }
 }

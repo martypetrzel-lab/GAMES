@@ -3,6 +3,7 @@ import "server-only";
 import { getPrisma } from "@/lib/db/prisma";
 import { isApprovedOfferTarget } from "@/lib/urls/safe-url";
 import type { ProviderOffer, ProviderStore } from "@/modules/prices/domain/types";
+import { hasRelevantPriceChange } from "@/modules/prices/domain/price-change";
 
 function slugify(value: string) {
   return value
@@ -117,10 +118,11 @@ export async function persistOffers(
         orderBy: { observedAt: "desc" },
       });
       if (
-        !latest ||
-        latest.priceMinor !== offer.price.minor ||
-        latest.regularPriceMinor !== offer.regularPrice.minor ||
-        latest.currency !== offer.price.currency
+        hasRelevantPriceChange(latest, {
+          priceMinor: offer.price.minor,
+          regularPriceMinor: offer.regularPrice.minor,
+          currency: offer.price.currency,
+        })
       ) {
         await tx.priceObservation.create({
           data: {
