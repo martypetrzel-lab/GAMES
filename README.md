@@ -48,19 +48,24 @@
 
 Web bude dostupný na `http://localhost:3000`. Kontrola běhu služby je na `http://localhost:3000/api/health`. Produkční sestavení vytvoříte přes `pnpm build` a lokálně spustíte přes `pnpm start`. Railway na Linuxu používá samostatný server přes `pnpm start:standalone`.
 
-Health endpoint kontroluje i skutečné připojení k databázi. Vrací pouze bezpečný stav `ok`/`degraded` a čas kontroly, nikdy připojovací údaje.
+`/api/health` je rychlý liveness endpoint bez databázového dotazu. `/api/ready` samostatně ověřuje databázi lehkým dotazem s časovým limitem. Oba vrací pouze bezpečný stav a čas kontroly, nikdy připojovací údaje.
 
 Pro vývoj nové migrace po změně schématu použijte `pnpm db:migrate --name popis-zmeny`. Pro aplikování již vytvořených migrací používejte `pnpm db:deploy`; produkční databázi nepřipojujte k příkazu `migrate dev`.
 
 ## Proměnné prostředí
 
-| Proměnná                   | Povinná | Popis                                                                |
-| -------------------------- | ------- | -------------------------------------------------------------------- |
-| `DATABASE_URL`             | ano     | Připojovací URL PostgreSQL. Nikdy ji necommitujte.                   |
-| `CHEAPSHARK_USER_AGENT`    | ano     | Identifikace serverových požadavků vůči CheapSharku.                 |
-| `CHEAPSHARK_CONTACT_EMAIL` | ne      | Neveřejný provozní kontakt připojený k User-Agentu.                  |
-| `CNB_API_BASE_URL`         | ne      | Výchozí hodnota je `https://api.cnb.cz/cnbapi`.                      |
-| `ADS_ENABLED`              | ne      | Ve Fázi 1 musí zůstat `false`; žádné reklamní skripty se nenačítají. |
+| Proměnná                      | Povinná        | Popis                                                                                 |
+| ----------------------------- | -------------- | ------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                | ano            | Připojovací URL PostgreSQL. Nikdy ji necommitujte.                                    |
+| `CHEAPSHARK_USER_AGENT`       | ano            | Identifikace serverových požadavků vůči CheapSharku.                                  |
+| `CHEAPSHARK_CONTACT_EMAIL`    | ne             | Neveřejný provozní kontakt připojený k User-Agentu.                                   |
+| `CNB_API_BASE_URL`            | ne             | Výchozí hodnota je `https://api.cnb.cz/cnbapi`.                                       |
+| `ADS_ENABLED`                 | ne             | Ve Fázi 1 musí zůstat `false`; žádné reklamní skripty se nenačítají.                  |
+| `APP_BASE_URL`                | ano v produkci | Jediný veřejný HTTPS základ canonical URL, sitemap, robots, e-mailů a auth callbacků. |
+| `DATABASE_POOL_MAX`           | ne             | Počet spojení jedné repliky, výchozí konzervativně `5`.                               |
+| `DATABASE_CONNECT_TIMEOUT_MS` | ne             | Timeout navázání DB spojení, výchozí `5000`.                                          |
+| `DATABASE_IDLE_TIMEOUT_MS`    | ne             | Uvolnění nečinného spojení, výchozí `30000`.                                          |
+| `READINESS_TIMEOUT_MS`        | ne             | Limit `/api/ready`, výchozí `2000`.                                                   |
 
 Soubor `.env.example` obsahuje pouze bezpečné vzory. Skutečné e-maily, hesla a tokeny patří do lokálního `.env` nebo do správy proměnných Railway.
 
@@ -182,3 +187,25 @@ Každou službu vytvořte ze stejného repozitáře, připojte stejnou PostgreSQ
 3. **Alert Check** – Start Command `pnpm alerts:check`, doporučený cron `45 */2 * * *` UTC.
 
 Railway plánuje v UTC. Praha je v zimě UTC+1 a v létě UTC+2, takže například 02:15 UTC odpovídá 03:15 CET nebo 04:15 CEST. Všechny tři procesy mají databázový zámek, omezenou práci a po skončení uzavřou připojení.
+
+## Výkon, cache a stabilní URL
+
+Webový proces používá právě jeden Prisma Client a konzervativní PostgreSQL pool na proces. Při navyšování počtu Railway replik musí součet `DATABASE_POOL_MAX` zůstat pod limitem databáze. Cron procesy klienta po dokončení explicitně odpojí.
+
+Veřejné stránky čtou poslední skutečně uložené nabídky a během requestu nečekají na CheapShark ani ČNB. Aktualizace patří do samostatných příkazů `catalog:refresh-prices` nebo `prices:refresh`. Ceny starší než 12 hodin jsou v UI označené, ale při výpadku poskytovatele zůstávají dostupné. Žádná falešná cena ani historie se nedoplňuje.
+
+| Veřejně cachovaná data        |      TTL |
+| ----------------------------- | -------: |
+| homepage a katalogové hledání |  5 minut |
+| detail hry a uložené nabídky  |  5 minut |
+| hry zdarma                    | 10 minut |
+| poslední uložený kurz ČNB     | 1 hodina |
+| sitemap                       | 1 hodina |
+
+Cache má samostatné tagy pro katalog, nabídky, homepage a hry zdarma. Uživatelská session, wishlist, alerty a ostatní soukromá data se do veřejné cache nevkládají. Redirecty `/go/` se necachují. Zápis nabídky vyvolá invalidaci v kontextu webu; konečná TTL je bezpečná pojistka pro samostatné workery.
+
+Kanonická adresa detailu je `/hra/[slug]`. Původní `/hra/cheapshark/[id]` provede permanentní redirect, jakmile existuje interní mapování. Slug se po změně názvu automaticky nemění; aliasový model umožňuje řízenou změnu bez ztráty staré adresy.
+
+Produkt má automatický typ `GAME`, `DLC`, `DEMO`, `SOUNDTRACK`, `SOFTWARE` nebo `UNKNOWN` a volitelný `productTypeOverride`. Synchronizace ruční override nikdy nepřepisuje. Homepage, sitemap a hry zdarma standardně publikují jen plné hry. Klasifikace podle názvu je konzervativní a nejasné položky zůstávají `UNKNOWN`.
+
+V produkci nastavte `APP_BASE_URL` na aktuální veřejnou HTTPS doménu bez koncového lomítka. Pokud chybí, veřejná metadata na Railway použijí automatický `RAILWAY_PUBLIC_DOMAIN`; pro autentizaci však `APP_BASE_URL` zůstává povinné.
