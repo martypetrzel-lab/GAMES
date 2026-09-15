@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/db/prisma";
 import { isApprovedOfferTarget } from "@/lib/urls/safe-url";
 import type { ProviderOffer, ProviderStore } from "@/modules/prices/domain/types";
 import { hasRelevantPriceChange } from "@/modules/prices/domain/price-change";
+import { classifyPurchase, getStorePolicy } from "@/modules/stores/trusted-stores";
 
 function slugify(value: string) {
   return value
@@ -31,6 +32,9 @@ export async function persistOffers(
 
       const storeSource = storeMap.get(offer.externalStoreId);
       if (!storeSource) continue;
+      const policy = getStorePolicy(offer.provider, offer.externalStoreId);
+      if (policy.trustStatus !== "verified") continue;
+      const purchase = classifyPurchase(offer.provider, offer.externalStoreId);
 
       const providerGame = await tx.providerGame.findUnique({
         where: {
@@ -77,11 +81,32 @@ export async function persistOffers(
           name: storeSource.name,
           isActive: storeSource.active,
           imageUrl: storeSource.imageUrl,
+          slug: policy.slug,
+          sellerType: policy.sellerType,
+          trustStatus: policy.trustStatus,
+          isFirstParty: policy.isFirstParty,
+          isAuthorized: policy.isAuthorized,
+          supportedActivationPlatforms: policy.supportedActivationPlatforms,
+          officialWebsite: policy.officialWebsite,
+          verificationSource: "cheapshark-store-id-allowlist",
+          verifiedAt: new Date(),
+          disabledAt: storeSource.active ? null : new Date(),
+          displayPriority: policy.displayPriority,
         },
         update: {
           name: storeSource.name,
           isActive: storeSource.active,
           imageUrl: storeSource.imageUrl,
+          sellerType: policy.sellerType,
+          trustStatus: policy.trustStatus,
+          isFirstParty: policy.isFirstParty,
+          isAuthorized: policy.isAuthorized,
+          supportedActivationPlatforms: policy.supportedActivationPlatforms,
+          officialWebsite: policy.officialWebsite,
+          verificationSource: "cheapshark-store-id-allowlist",
+          verifiedAt: new Date(),
+          disabledAt: storeSource.active ? null : new Date(),
+          displayPriority: policy.displayPriority,
         },
       });
 
@@ -100,6 +125,7 @@ export async function persistOffers(
           savingsPercent: offer.savingsPercent,
           targetUrl: offer.targetUrl,
           observedAt: offer.observedAt,
+          ...purchase,
         },
         update: {
           gameId,
@@ -110,6 +136,7 @@ export async function persistOffers(
           savingsPercent: offer.savingsPercent,
           targetUrl: offer.targetUrl,
           observedAt: offer.observedAt,
+          ...purchase,
         },
       });
 

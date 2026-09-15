@@ -12,9 +12,21 @@ export async function GET(_request: Request, { params }: RouteContext<"/go/[offe
 
   const offer = await getPrisma().offer.findUnique({
     where: { id: parsedId.data },
-    select: { provider: true, targetUrl: true },
+    select: {
+      provider: true,
+      targetUrl: true,
+      store: {
+        select: { trustStatus: true, isFirstParty: true, isAuthorized: true, disabledAt: true },
+      },
+    },
   });
-  if (!offer || !isApprovedOfferTarget(offer.targetUrl, offer.provider)) {
+  if (
+    !offer ||
+    offer.store.trustStatus !== "verified" ||
+    (!offer.store.isFirstParty && !offer.store.isAuthorized) ||
+    offer.store.disabledAt ||
+    !isApprovedOfferTarget(offer.targetUrl, offer.provider)
+  ) {
     return new Response("Nabídka nebyla nalezena.", { status: 404 });
   }
 

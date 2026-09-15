@@ -8,6 +8,7 @@ import { getCheapSharkProvider } from "@/modules/prices/providers/provider-regis
 import { ProviderError } from "@/modules/prices/providers/provider-error";
 import { persistOffers } from "@/modules/prices/services/offer-persistence";
 import { logServerError } from "@/lib/observability/server-log";
+import { isPublicStore } from "@/modules/stores/trusted-stores";
 
 const searchQuerySchema = z.string().trim().min(2).max(80);
 const externalIdSchema = z.string().regex(/^\d{1,12}$/);
@@ -25,11 +26,14 @@ export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
       provider.searchOffers(query),
       provider.getStores(),
     ]);
-    const persistedIds = await persistOffers(offers, stores);
+    const publicOffers = offers.filter((offer) =>
+      isPublicStore(offer.provider, offer.externalStoreId),
+    );
+    const persistedIds = await persistOffers(publicOffers, stores);
     const storeNames = new Map(stores.map((store) => [store.externalId, store.name]));
     const grouped = new Map<string, SearchResult>();
 
-    for (const offer of offers) {
+    for (const offer of publicOffers) {
       const current = grouped.get(offer.externalGameId) ?? {
         externalGameId: offer.externalGameId,
         title: offer.title,
@@ -51,7 +55,7 @@ export async function searchGames(rawQuery: string): Promise<SearchResult[]> {
     }));
     await db.providerRun.update({
       where: { id: run.id },
-      data: { status: "success", itemCount: offers.length, completedAt: new Date() },
+      data: { status: "success", itemCount: publicOffers.length, completedAt: new Date() },
     });
     return results;
   } catch (error) {
@@ -96,11 +100,14 @@ export async function getGameDetail(rawExternalId: string): Promise<{
   const [game, stores] = await Promise.all([provider.getGame(externalId), provider.getStores()]);
   if (!game) return null;
 
-  const persistedIds = await persistOffers(game.offers, stores);
+  const publicOffers = game.offers.filter((offer) =>
+    isPublicStore(offer.provider, offer.externalStoreId),
+  );
+  const persistedIds = await persistOffers(publicOffers, stores);
   const storeNames = new Map(stores.map((store) => [store.externalId, store.name]));
   return {
     game,
-    offers: game.offers
+    offers: publicOffers
       .map((offer) => ({
         ...offer,
         storeName: storeNames.get(offer.externalStoreId) ?? "Neznámý obchod",

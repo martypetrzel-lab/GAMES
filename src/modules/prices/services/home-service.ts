@@ -8,6 +8,10 @@ export async function getHomeHighlights() {
     db.offer.findMany({
       where: {
         store: { isActive: true },
+        AND: [
+          { store: { trustStatus: "verified" } },
+          { store: { OR: [{ isFirstParty: true }, { isAuthorized: true }] } },
+        ],
         game: { providerGames: { some: { provider: "cheapshark" } } },
       },
       orderBy: [{ savingsPercent: "desc" }, { priceMinor: "asc" }],

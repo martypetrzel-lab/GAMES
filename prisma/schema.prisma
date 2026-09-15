@@ -15,6 +15,12 @@ model Game {
   imageUrl      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  appType       String         @default("unclassified")
+  catalogSource String?
+  catalogSyncedAt DateTime?
+  catalogActive Boolean        @default(true)
+  priceChangeNumber BigInt?
+  popularityScore Int          @default(0)
   providerGames ProviderGame[]
   offers        Offer[]
   wishlistItems WishlistItem[]
@@ -254,7 +260,19 @@ model Store {
   imageUrl    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  slug        String?  @unique
+  sellerType  String   @default("unknown")
+  trustStatus String   @default("pending")
+  isFirstParty Boolean @default(false)
+  isAuthorized Boolean @default(false)
+  supportedActivationPlatforms String[] @default([])
+  officialWebsite String?
+  verificationSource String?
+  verifiedAt DateTime?
+  disabledAt DateTime?
+  displayPriority Int @default(100)
   offers      Offer[]
+  verifications StoreVerification[]
 
   @@unique([provider, externalId])
   @@index([name])
@@ -288,6 +306,8 @@ model Offer {
   observedAt        DateTime
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  activationPlatform String            @default("unknown")
+  purchaseType       String            @default("unknown")
   game              Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
   store             Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
   observations      PriceObservation[]
@@ -296,6 +316,46 @@ model Offer {
   @@index([gameId, priceMinor])
   @@index([storeId])
   @@index([observedAt])
+}
+
+model CatalogSyncRun {
+  id           String    @id @default(uuid()) @db.Uuid
+  provider     String
+  status       String
+  cursorStart  String?
+  cursorEnd    String?
+  fetched      Int       @default(0)
+  imported     Int       @default(0)
+  skipped      Int       @default(0)
+  errorMessage String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([provider, startedAt(sort: Desc)])
+  @@index([status, startedAt])
+}
+
+model CatalogSyncCheckpoint {
+  id               String   @id @default(uuid()) @db.Uuid
+  provider         String   @unique
+  cursor           String?
+  modifiedSince    BigInt?
+  completedCycleAt DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model StoreVerification {
+  id          String   @id @default(uuid()) @db.Uuid
+  storeId     String   @db.Uuid
+  trustStatus String
+  source      String
+  evidenceUrl String?
+  verifiedAt  DateTime
+  createdAt   DateTime @default(now())
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, verifiedAt(sort: Desc)])
 }
 
 model PriceObservation {
